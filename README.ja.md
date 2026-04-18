@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://capsule-render.vercel.app/api?type=wave&color=gradient&customColorList=0,2,2,5,30&height=220&section=header&text=SPICY%20QUEST&fontSize=48&fontAlignY=42&fontColor=ffffff&desc=%E3%83%AC%E3%83%88%E3%83%AD%20RPG%20%E3%82%A2%E3%83%89%E3%83%99%E3%83%B3%E3%83%81%E3%83%A3%E3%83%BC&descAlignY=62&descSize=16&animation=fadeIn" width="100%">
+  <img src="banner.svg" width="100%" alt="Spicy Quest">
 </p>
 
 <p align="center">

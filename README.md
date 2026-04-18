@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://capsule-render.vercel.app/api?type=wave&color=gradient&customColorList=0,2,2,5,30&height=220&section=header&text=SPICY%20QUEST&fontSize=48&fontAlignY=42&fontColor=ffffff&desc=A%20Retro%20Dragon%20Quest-Style%20RPG%20Adventure&descAlignY=62&descSize=16&animation=fadeIn" width="100%">
+  <img src="banner.svg" width="100%" alt="Spicy Quest">
 </p>
 
 <p align="center">
@@ -7,10 +7,6 @@
   <img src="https://img.shields.io/badge/Dependencies-None-27AE60?style=flat-square" alt="No Dependencies">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License">
   <img src="https://img.shields.io/badge/Status-Playable-FF6B6B?style=flat-square" alt="Playable">
-</p>
-
-<p align="center">
-  <img width="480" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 200'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23c0392b'/%3E%3Cstop offset='50%25' style='stop-color:%23e67e22'/%3E%3Cstop offset='100%25' style='stop-color:%23f1c40f'/%3E%3C/linearGradient%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='blur'/%3E%3CfeMerge%3E%3CfeMergeNode in='blur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Crect width='480' height='200' rx='12' fill='url(%23bg)'/%3E%3Crect x='4' y='4' width='472' height='192' rx='10' fill='none' stroke='%23ffd700' stroke-width='2' stroke-dasharray='8 4'/%3E%3C!-- Chili pepper character --%3E%3Cg transform='translate(80,30)'%3E%3Crect x='12' y='0' width='6' height='4' fill='%2327ae60'/%3E%3Crect x='10' y='2' width='3' height='6' fill='%2327ae60'/%3E%3Crect x='18' y='2' width='3' height='6' fill='%2327ae60'/%3E%3Crect x='8' y='8' width='14' height='3' fill='%23c0392b'/%3E%3Crect x='6' y='11' width='18' height='3' fill='%23c0392b'/%3E%3Crect x='6' y='14' width='18' height='3' fill='%23e74c3c'/%3E%3Crect x='6' y='17' width='6' height='3' fill='%23ffffff'/%3E%3Crect x='16' y='17' width='6' height='3' fill='%23ffffff'/%3E%3Crect x='8' y='18' width='2' height='2' fill='%231a1a2e'/%3E%3Crect x='18' y='18' width='2' height='2' fill='%231a1a2e'/%3E%3Crect x='6' y='20' width='18' height='3' fill='%23e74c3c'/%3E%3Crect x='10' y='21' width='4' height='2' fill='%23e67e22'/%3E%3Crect x='8' y='23' width='14' height='3' fill='%23c0392b'/%3E%3Crect x='10' y='26' width='10' height='3' fill='%23c0392b'/%3E%3Crect x='12' y='29' width='6' height='3' fill='%23c0392b'/%3E%3Crect x='14' y='32' width='4' height='3' fill='%238b1a1a'/%3E%3C/g%3E%3C!-- Sword --%3E%3Cg transform='translate(120,50)'%3E%3Crect x='0' y='0' width='2' height='30' fill='%23c0c0c0'/%3E%3Crect x='-3' y='10' width='8' height='3' fill='%23ffd700'/%3E%3Crect x='0' y='30' width='2' height='4' fill='%238b4513'/%3E%3C/g%3E%3C!-- Slime enemy --%3E%3Cg transform='translate(340,55)'%3E%3Crect x='6' y='0' width='20' height='4' fill='%232980b9'/%3E%3Crect x='2' y='4' width='28' height='6' fill='%235dade2'/%3E%3Crect x='0' y='10' width='32' height='6' fill='%235dade2'/%3E%3Crect x='4' y='12' width='4' height='3' fill='%23ffffff'/%3E%3Crect x='18' y='12' width='4' height='3' fill='%23ffffff'/%3E%3Crect x='5' y='13' width='2' height='2' fill='%231a1a2e'/%3E%3Crect x='19' y='13' width='2' height='2' fill='%231a1a2e'/%3E%3Crect x='0' y='16' width='32' height='4' fill='%232980b9'/%3E%3Crect x='4' y='20' width='24' height='4' fill='%232980b9'/%3E%3C/g%3E%3C!-- Stars --%3E%3Ccircle cx='60' cy='90' r='2' fill='%23ffd700' filter='url(%23glow)'/%3E%3Ccircle cx='420' cy='40' r='2' fill='%23ffd700' filter='url(%23glow)'/%3E%3Ccircle cx='250' cy='25' r='1.5' fill='%23ffffff'/%3E%3Ccircle cx='180' cy='45' r='1.5' fill='%23ffffff'/%3E%3Ccircle cx='310' cy='30' r='1.5' fill='%23ffffff'/%3E%3C!-- Title --%3E%3Ctext x='240' y='110' font-family='monospace' font-size='28' font-weight='bold' fill='%23ffffff' text-anchor='middle' letter-spacing='4'%3ESPICY QUEST%3C/text%3E%3Ctext x='240' y='135' font-family='monospace' font-size='11' fill='%23ffffff' text-anchor='middle' opacity='0.8'%3EDragon Quest-Style Retro RPG%3C/text%3E%3C!-- Decorative line --%3E%3Cline x1='140' y1='150' x2='340' y2='150' stroke='%23ffd700' stroke-width='1'/%3E%3C!-- Features --%3E%3Ctext x='240' y='172' font-family='monospace' font-size='9' fill='%23ffffff' text-anchor='middle' opacity='0.7'%3ETurn-Based Combat | Pixel Art | Zero Dependencies%3C/text%3E%3C/svg%3E" alt="Spicy Quest Banner">
 </p>
 
 ---
@@ -75,6 +71,7 @@
 ```
 spicy-quest/
   index.html          -- Complete game (single file)
+  banner.svg          -- Title screen artwork
   README.md           -- This file
   README.ja.md        -- Japanese README
   LICENSE             -- MIT License

@@ -1,0 +1,339 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" width="800" height="320">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="40%" stop-color="#1a0a2e"/>
+      <stop offset="70%" stop-color="#2d0a0a"/>
+      <stop offset="100%" stop-color="#0f0e17"/>
+    </linearGradient>
+    <!-- Ground gradient -->
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a5c1a"/>
+      <stop offset="100%" stop-color="#0d3b0d"/>
+    </linearGradient>
+    <!-- Title glow -->
+    <filter id="titleGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#e74c3c" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle glow for stars -->
+    <filter id="starGlow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Fire glow -->
+    <filter id="fireGlow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#e67e22" flood-opacity="0.4" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Gold shimmer -->
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd700"/>
+      <stop offset="50%" stop-color="#ffec8b"/>
+      <stop offset="100%" stop-color="#daa520"/>
+    </linearGradient>
+    <!-- Ornate border pattern -->
+    <pattern id="borderPattern" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="none"/>
+      <rect x="0" y="0" width="4" height="4" fill="#ffd700" opacity="0.3"/>
+      <rect x="4" y="4" width="4" height="4" fill="#ffd700" opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="800" height="320" fill="url(#skyGrad)"/>
+
+  <!-- Pixel grid overlay (subtle) -->
+  <g opacity="0.04">
+    <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="none" stroke="#ffffff" stroke-width="0.5"/>
+    </pattern>
+    <rect width="800" height="320" fill="url(#grid)"/>
+  </g>
+
+  <!-- ===== GROUND / TERRAIN ===== -->
+  <!-- Pixel-art ground tiles -->
+  <g>
+    <!-- Grass base -->
+    <rect x="0" y="245" width="800" height="75" fill="url(#groundGrad)"/>
+    <!-- Grass top edge pixels -->
+    <g fill="#27ae60">
+      <rect x="0" y="240" width="8" height="8" rx="0"/>
+      <rect x="12" y="244" width="8" height="4"/>
+      <rect x="24" y="240" width="8" height="8"/>
+      <rect x="36" y="242" width="8" height="6"/>
+      <rect x="48" y="240" width="8" height="8"/>
+      <rect x="60" y="244" width="8" height="4"/>
+      <rect x="80" y="240" width="8" height="8"/>
+      <rect x="96" y="242" width="8" height="6"/>
+      <rect x="112" y="240" width="8" height="8"/>
+      <rect x="128" y="244" width="8" height="4"/>
+      <rect x="144" y="240" width="8" height="8"/>
+      <rect x="160" y="242" width="8" height="6"/>
+      <rect x="180" y="240" width="8" height="8"/>
+      <rect x="196" y="244" width="8" height="4"/>
+      <rect x="212" y="240" width="8" height="8"/>
+      <rect x="228" y="242" width="8" height="6"/>
+      <rect x="248" y="240" width="8" height="8"/>
+      <rect x="264" y="244" width="8" height="4"/>
+      <rect x="280" y="240" width="8" height="8"/>
+      <rect x="300" y="242" width="8" height="6"/>
+      <rect x="320" y="240" width="8" height="8"/>
+      <rect x="340" y="244" width="8" height="4"/>
+      <rect x="360" y="240" width="8" height="8"/>
+      <rect x="380" y="242" width="8" height="6"/>
+      <rect x="400" y="240" width="8" height="8"/>
+      <rect x="420" y="244" width="8" height="4"/>
+      <rect x="440" y="240" width="8" height="8"/>
+      <rect x="460" y="242" width="8" height="6"/>
+      <rect x="480" y="240" width="8" height="8"/>
+      <rect x="500" y="244" width="8" height="4"/>
+      <rect x="520" y="240" width="8" height="8"/>
+      <rect x="540" y="242" width="8" height="6"/>
+      <rect x="560" y="240" width="8" height="8"/>
+      <rect x="580" y="244" width="8" height="4"/>
+      <rect x="600" y="240" width="8" height="8"/>
+      <rect x="620" y="242" width="8" height="6"/>
+      <rect x="640" y="240" width="8" height="8"/>
+      <rect x="660" y="244" width="8" height="4"/>
+      <rect x="680" y="240" width="8" height="8"/>
+      <rect x="700" y="242" width="8" height="6"/>
+      <rect x="720" y="240" width="8" height="8"/>
+      <rect x="740" y="244" width="8" height="4"/>
+      <rect x="760" y="240" width="8" height="8"/>
+      <rect x="780" y="242" width="8" height="6"/>
+    </g>
+    <!-- Path tiles -->
+    <g fill="#a0845c">
+      <rect x="360" y="248" width="80" height="72"/>
+      <rect x="352" y="260" width="8" height="60"/>
+      <rect x="440" y="260" width="8" height="60"/>
+    </g>
+  </g>
+
+  <!-- ===== TREES (pixel art) ===== -->
+  <!-- Tree 1 (left) -->
+  <g transform="translate(100,170)">
+    <rect x="10" y="50" width="12" height="20" fill="#4a3728"/>
+    <rect x="0" y="20" width="32" height="35" fill="#0d3b0d"/>
+    <rect x="4" y="10" width="24" height="30" fill="#1a5c1a"/>
+    <rect x="8" y="0" width="16" height="25" fill="#27ae60"/>
+    <rect x="10" y="24" width="4" height="4" fill="#a8e6cf" opacity="0.5"/>
+    <rect x="20" y="30" width="4" height="4" fill="#a8e6cf" opacity="0.5"/>
+  </g>
+  <!-- Tree 2 (right) -->
+  <g transform="translate(660,175)">
+    <rect x="10" y="50" width="12" height="20" fill="#4a3728"/>
+    <rect x="0" y="20" width="32" height="35" fill="#0d3b0d"/>
+    <rect x="4" y="10" width="24" height="30" fill="#1a5c1a"/>
+    <rect x="8" y="0" width="16" height="25" fill="#27ae60"/>
+    <rect x="12" y="22" width="4" height="4" fill="#a8e6cf" opacity="0.5"/>
+  </g>
+  <!-- Small bushes -->
+  <g fill="#1a5c1a">
+    <rect x="200" y="235" width="16" height="10" rx="0"/>
+    <rect x="204" y="232" width="8" height="6"/>
+    <rect x="560" y="238" width="12" height="8"/>
+    <rect x="563" y="235" width="6" height="5"/>
+  </g>
+
+  <!-- ===== STARS ===== -->
+  <g filter="url(#starGlow)">
+    <circle cx="50" cy="25" r="1.5" fill="#f1c40f"/>
+    <circle cx="130" cy="55" r="1" fill="#ffffff"/>
+    <circle cx="200" cy="15" r="1.5" fill="#f1c40f"/>
+    <circle cx="290" cy="40" r="1" fill="#ffffff"/>
+    <circle cx="380" cy="20" r="1.5" fill="#ffd700"/>
+    <circle cx="450" cy="50" r="1" fill="#ffffff"/>
+    <circle cx="530" cy="18" r="1.5" fill="#f1c40f"/>
+    <circle cx="610" cy="35" r="1" fill="#ffffff"/>
+    <circle cx="700" cy="22" r="1.5" fill="#ffd700"/>
+    <circle cx="760" cy="55" r="1" fill="#ffffff"/>
+    <circle cx="90" cy="70" r="1" fill="#ffd700" opacity="0.6"/>
+    <circle cx="340" cy="65" r="1" fill="#ffffff" opacity="0.5"/>
+    <circle cx="500" cy="75" r="1.5" fill="#f1c40f" opacity="0.4"/>
+    <circle cx="170" cy="80" r="1" fill="#ffffff" opacity="0.5"/>
+    <circle cx="650" cy="65" r="1" fill="#ffd700" opacity="0.4"/>
+  </g>
+
+  <!-- ===== CHILI KNIGHT HERO (large pixel art, center-left) ===== -->
+  <g transform="translate(280,140) scale(3)">
+    <!-- Shadow -->
+    <ellipse cx="10" cy="38" rx="8" ry="3" fill="#000" opacity="0.3"/>
+    <!-- Stem/Leaves -->
+    <rect x="8" y="0" width="4" height="3" fill="#27ae60"/>
+    <rect x="7" y="1" width="2" height="3" fill="#1a5c1a"/>
+    <rect x="12" y="1" width="2" height="3" fill="#1a5c1a"/>
+    <rect x="9" y="-2" width="2" height="3" fill="#6bff6b"/>
+    <!-- Body (pepper shape) -->
+    <rect x="4" y="3" width="12" height="3" fill="#c0392b"/>
+    <rect x="3" y="6" width="14" height="3" fill="#c0392b"/>
+    <rect x="2" y="9" width="16" height="3" fill="#e74c3c"/>
+    <rect x="2" y="12" width="16" height="3" fill="#e74c3c"/>
+    <!-- Eyes -->
+    <rect x="4" y="12" width="4" height="3" fill="#ffffff"/>
+    <rect x="12" y="12" width="4" height="3" fill="#ffffff"/>
+    <rect x="5" y="13" width="2" height="2" fill="#1a1a2e"/>
+    <rect x="13" y="13" width="2" height="2" fill="#1a1a2e"/>
+    <!-- Mouth -->
+    <rect x="8" y="15" width="4" height="1" fill="#e67e22"/>
+    <!-- Body continues -->
+    <rect x="3" y="18" width="14" height="3" fill="#c0392b"/>
+    <rect x="4" y="21" width="12" height="3" fill="#c0392b"/>
+    <rect x="5" y="24" width="10" height="3" fill="#8b1a1a"/>
+    <rect x="7" y="27" width="6" height="3" fill="#8b1a1a"/>
+    <!-- Feet -->
+    <rect x="4" y="30" width="5" height="3" fill="#6d4c41"/>
+    <rect x="11" y="30" width="5" height="3" fill="#6d4c41"/>
+    <!-- Cape -->
+    <rect x="1" y="9" width="2" height="12" fill="#e67e22"/>
+    <rect x="0" y="18" width="2" height="6" fill="#d35400"/>
+    <!-- Sword (right side) -->
+    <rect x="18" y="6" width="2" height="16" fill="#c0c0c0"/>
+    <rect x="16" y="12" width="6" height="2" fill="#ffd700"/>
+    <rect x="18" y="22" width="2" height="4" fill="#8b4513"/>
+  </g>
+
+  <!-- ===== ICE SLIME (enemy, right side) ===== -->
+  <g transform="translate(520,195) scale(2.5)">
+    <!-- Shadow -->
+    <ellipse cx="8" cy="22" rx="7" ry="2" fill="#000" opacity="0.3"/>
+    <!-- Body -->
+    <rect x="3" y="2" width="10" height="3" fill="#5dade2"/>
+    <rect x="1" y="5" width="14" height="4" fill="#5dade2"/>
+    <rect x="0" y="9" width="16" height="5" fill="#5dade2"/>
+    <rect x="1" y="14" width="14" height="3" fill="#2980b9"/>
+    <rect x="3" y="17" width="10" height="2" fill="#2980b9"/>
+    <!-- Eyes -->
+    <rect x="3" y="10" width="3" height="3" fill="#ffffff"/>
+    <rect x="10" y="10" width="3" height="3" fill="#ffffff"/>
+    <rect x="4" y="11" width="2" height="2" fill="#1a1a2e"/>
+    <rect x="11" y="11" width="2" height="2" fill="#1a1a2e"/>
+    <!-- Shine -->
+    <rect x="2" y="6" width="3" height="2" fill="#aed6f1" opacity="0.6"/>
+  </g>
+
+  <!-- ===== FROST KING (boss silhouette, background right) ===== -->
+  <g transform="translate(600,100) scale(2)" opacity="0.25">
+    <rect x="5" y="0" width="6" height="4" fill="#1a3a5c"/>
+    <rect x="2" y="4" width="12" height="8" fill="#2980b9"/>
+    <rect x="0" y="12" width="16" height="10" fill="#5dade2"/>
+    <rect x="2" y="14" width="4" height="3" fill="#ffffff"/>
+    <rect x="10" y="14" width="4" height="3" fill="#ffffff"/>
+    <rect x="3" y="15" width="2" height="2" fill="#1a1a2e"/>
+    <rect x="11" y="15" width="2" height="2" fill="#1a1a2e"/>
+    <rect x="0" y="22" width="16" height="8" fill="#2980b9"/>
+    <rect x="2" y="30" width="5" height="4" fill="#2980b9"/>
+    <rect x="9" y="30" width="5" height="4" fill="#2980b9"/>
+    <!-- Crown -->
+    <rect x="3" y="-3" width="10" height="3" fill="#ffd700"/>
+    <rect x="4" y="-5" width="2" height="3" fill="#ffd700"/>
+    <rect x="7" y="-6" width="2" height="4" fill="#ffd700"/>
+    <rect x="10" y="-5" width="2" height="3" fill="#ffd700"/>
+  </g>
+
+  <!-- ===== FIRE PARTICLES (from hero) ===== -->
+  <g filter="url(#fireGlow)">
+    <rect x="340" y="130" width="3" height="3" fill="#e74c3c" opacity="0.8"/>
+    <rect x="350" y="125" width="2" height="2" fill="#e67e22" opacity="0.7"/>
+    <rect x="335" y="120" width="2" height="2" fill="#f1c40f" opacity="0.6"/>
+    <rect x="355" y="118" width="3" height="3" fill="#e74c3c" opacity="0.5"/>
+    <rect x="330" y="112" width="2" height="2" fill="#e67e22" opacity="0.4"/>
+  </g>
+
+  <!-- ===== TITLE TEXT ===== -->
+  <!-- Shadow -->
+  <text x="402" y="82" font-family="'Courier New',monospace" font-size="52" font-weight="bold" fill="#000" text-anchor="middle" letter-spacing="6" opacity="0.5">SPICY QUEST</text>
+  <!-- Main title with glow -->
+  <text x="400" y="80" font-family="'Courier New',monospace" font-size="52" font-weight="bold" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="6" filter="url(#titleGlow)">SPICY QUEST</text>
+  <!-- Title outline -->
+  <text x="400" y="80" font-family="'Courier New',monospace" font-size="52" font-weight="bold" fill="none" stroke="#ffd700" stroke-width="0.5" text-anchor="middle" letter-spacing="6" opacity="0.5">SPICY QUEST</text>
+
+  <!-- Subtitle -->
+  <text x="400" y="105" font-family="'Courier New',monospace" font-size="14" fill="#e67e22" text-anchor="middle" letter-spacing="3" opacity="0.9">A RETRO RPG ADVENTURE</text>
+
+  <!-- Decorative line under title -->
+  <line x1="250" y1="115" x2="550" y2="115" stroke="url(#goldGrad)" stroke-width="1" opacity="0.6"/>
+  <circle cx="250" cy="115" r="2" fill="#ffd700"/>
+  <circle cx="550" cy="115" r="2" fill="#ffd700"/>
+  <!-- Diamond ornament center -->
+  <rect x="396" y="112" width="8" height="8" fill="#ffd700" transform="rotate(45 400 116)" opacity="0.8"/>
+
+  <!-- ===== BATTLE UI PREVIEW (bottom right, mini) ===== -->
+  <g transform="translate(570,255)" opacity="0.85">
+    <!-- Window frame -->
+    <rect x="0" y="0" width="200" height="50" rx="4" fill="rgba(15,14,23,0.9)" stroke="#ffd700" stroke-width="1.5"/>
+    <rect x="3" y="3" width="194" height="44" rx="2" fill="none" stroke="#e67e22" stroke-width="0.5"/>
+    <!-- Corner dots -->
+    <circle cx="5" cy="5" r="2" fill="#ffd700"/>
+    <circle cx="195" cy="5" r="2" fill="#ffd700"/>
+    <circle cx="5" cy="45" r="2" fill="#ffd700"/>
+    <circle cx="195" cy="45" r="2" fill="#ffd700"/>
+    <!-- Commands -->
+    <text x="20" y="20" font-family="monospace" font-size="10" fill="#ffd700">&#9654; Fight</text>
+    <text x="110" y="20" font-family="monospace" font-size="10" fill="#7f8c8d">Magic</text>
+    <text x="20" y="38" font-family="monospace" font-size="10" fill="#7f8c8d">Item</text>
+    <text x="110" y="38" font-family="monospace" font-size="10" fill="#7f8c8d">Run</text>
+  </g>
+
+  <!-- ===== HP BAR (mini, bottom left) ===== -->
+  <g transform="translate(40,268)">
+    <text x="0" y="0" font-family="monospace" font-size="9" fill="#ffd700">Chili  LV3</text>
+    <!-- HP bar -->
+    <rect x="0" y="6" width="80" height="8" rx="2" fill="#333"/>
+    <rect x="1" y="7" width="62" height="6" rx="1" fill="#27ae60"/>
+    <text x="84" y="13" font-family="monospace" font-size="8" fill="#ffffff">HP 35/45</text>
+    <!-- MP bar -->
+    <rect x="0" y="18" width="80" height="8" rx="2" fill="#333"/>
+    <rect x="1" y="19" width="50" height="6" rx="1" fill="#2980b9"/>
+    <text x="84" y="25" font-family="monospace" font-size="8" fill="#ffffff">MP 10/18</text>
+  </g>
+
+  <!-- ===== ORNATE FRAME BORDER ===== -->
+  <rect x="4" y="4" width="792" height="312" rx="6" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.5"/>
+  <rect x="8" y="8" width="784" height="304" rx="4" fill="none" stroke="#e67e22" stroke-width="1" stroke-dasharray="6 3" opacity="0.3"/>
+
+  <!-- Corner ornaments -->
+  <g fill="#ffd700" opacity="0.7">
+    <!-- Top-left -->
+    <rect x="2" y="2" width="12" height="4"/>
+    <rect x="2" y="2" width="4" height="12"/>
+    <!-- Top-right -->
+    <rect x="786" y="2" width="12" height="4"/>
+    <rect x="794" y="2" width="4" height="12"/>
+    <!-- Bottom-left -->
+    <rect x="2" y="314" width="12" height="4"/>
+    <rect x="2" y="306" width="4" height="12"/>
+    <!-- Bottom-right -->
+    <rect x="786" y="314" width="12" height="4"/>
+    <rect x="794" y="306" width="4" height="12"/>
+  </g>
+
+  <!-- ===== PIXEL SPARKLES scattered ===== -->
+  <g fill="#ffd700" opacity="0.5">
+    <rect x="230" y="140" width="2" height="2"/>
+    <rect x="480" y="160" width="2" height="2"/>
+    <rect x="150" y="130" width="2" height="2"/>
+    <rect x="550" y="140" width="2" height="2"/>
+    <rect x="420" y="200" width="2" height="2"/>
+    <rect x="310" y="170" width="2" height="2"/>
+  </g>
+
+  <!-- ===== TAGLINE at bottom ===== -->
+  <text x="400" y="310" font-family="'Courier New',monospace" font-size="9" fill="#7f8c8d" text-anchor="middle" letter-spacing="2">TURN-BASED COMBAT &#x2022; PIXEL ART &#x2022; ZERO DEPENDENCIES &#x2022; SINGLE HTML FILE</text>
+</svg>
