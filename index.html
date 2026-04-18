@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Spicy Quest</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; }
+canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+'use strict';
+
+// ==================== CONFIG ====================
+const W = 320, H = 240, TILE = 16, SCALE = 3;
+const COLS = W / TILE, ROWS = H / TILE;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = W; canvas.height = H;
+
+function resize() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width = (W * Math.floor(s)) + 'px';
+  canvas.style.height = (H * Math.floor(s)) + 'px';
+}
+window.addEventListener('resize', resize); resize();
+
+// ==================== COLORS ====================
+const C = {
+  bg: '#0f0e17', black: '#1a1a2e', white: '#fffffe', cream: '#fff8dc',
+  red1: '#8b1a1a', red2: '#c0392b', red3: '#e74c3c', red4: '#ff6b6b',
+  grn1: '#1a5c1a', grn2: '#27ae60', grn3: '#6bff6b', grn4: '#a8e6cf',
+  brn1: '#4a3728', brn2: '#6d4c41', brn3: '#a0845c', brn4: '#d4b896',
+  blu1: '#1a3a5c', blu2: '#2980b9', blu3: '#5dade2', blu4: '#aed6f1',
+  yel: '#f1c40f', org: '#e67e22', gol: '#ffd700', pnk: '#ffb6c1',
+  gry: '#7f8c8d', pur: '#8e44ad', lblu: '#d6eaf8', snow: '#ecf0f1',
+  dkgrn: '#0d3b0d', teal: '#1abc9c', mag: '#e91e63',
+};
+
+// ==================== AUDIO ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playTone(freq, dur, type='square', vol=0.08) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+const SFX = {
+  select()  { playTone(660, 0.08); },
+  confirm() { playTone(880, 0.06); setTimeout(()=>playTone(1100, 0.08), 60); },
+  cancel()  { playTone(330, 0.1); },
+  step()    { playTone(200, 0.04, 'square', 0.03); },
+  hit()     { playTone(150, 0.15, 'sawtooth', 0.1); },
+  magic()   { playTone(523, 0.1); setTimeout(()=>playTone(659, 0.1), 80); setTimeout(()=>playTone(784, 0.15), 160); },
+  heal()    { playTone(440, 0.15, 'sine', 0.1); setTimeout(()=>playTone(554, 0.15, 'sine', 0.1), 120); setTimeout(()=>playTone(659, 0.2, 'sine', 0.12), 240); },
+  victory() { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.2,'square',0.08),i*150)); },
+  death()   { [400,350,300,200].forEach((f,i)=>setTimeout(()=>playTone(f,0.25,'sawtooth',0.08),i*200)); },
+  encounter(){ playTone(100, 0.3, 'sawtooth', 0.15); },
+  levelup() { [523,659,784,880,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.15,'square',0.08),i*100)); },
+  text()    { playTone(800, 0.03, 'square', 0.04); },
+};
+
+// ==================== INPUT ====================
+const keys = {}, jp = {};
+document.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape',' ','z','x','w','a','s','d'].includes(e.key)) e.preventDefault();
+  if (!keys[e.key]) jp[e.key] = true;
+  keys[e.key] = true;
+  initAudio();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+function pressed(k) { return jp[k]; }
+function clearInput() { for (const k in jp) delete jp[k]; }
+function actionKey() { return pressed('Enter') || pressed('z') || pressed(' '); }
+function cancelKey() { return pressed('Escape') || pressed('x'); }
+function upKey() { return pressed('ArrowUp') || pressed('w'); }
+function downKey() { return pressed('ArrowDown') || pressed('s'); }
+function leftKey() { return pressed('ArrowLeft') || pressed('a'); }
+function rightKey() { return pressed('ArrowRight') || pressed('d'); }
+
+// ==================== SPRITES ====================
+// Compact sprite format: each char = palette color
+const SP = {
+  player_down: [
+    '....gggg....',
+    '...rRRRrg...',
+    '..rRRRRRr...',
+    '..rRwRwRr...',
+    '..rRkRkRr...',
+    '..rRRRRRr...',
+    '...rRor.....',
+    '..rRRRRRr...',
+    '...rRRRr....',
+    '....rRr.....',
+    '...bb.bb....',
+    '............',
+  ],
+  player_up: [
+    '....gggg....',
+    '...rRRRrg...',
+    '..rRRRRRr...',
+    '..rRRRRRr...',
+    '..rRRRRRr...',
+    '..rRRRRRr...',
+    '..rRRRRRr...',
+    '..rRRRRRr...',
+    '...rRRRr....',
+    '....rRr.....',
+    '...bb.bb....',
+    '............',
+  ],
+  player_left: [
+    '...gggg.....',
+    '..rRRRrg....',
+    '.rRRRRRr....',
+    '.rRwRkRr....',
+    '.rRRRRRr....',
+    '..rRor......',
+    '.rRRRRRr....',
+    '..rRRRr.....',
+    '...rRr......',
+    '...bb.bb....',
+    '............',
+    '............',
+  ],
+  player_right: [
+    '.....gggg...',
+    '....gRRRr...',
+    '....rRRRRRr.',
+    '....rRkwRr.',
+    '....rRRRRRr.',
+    '......roRr..',
+    '....rRRRRRr.',
+    '.....rRRRr..',
+    '......rRr...',
+    '....bb.bb...',
+    '............',
+    '............',
+  ],
+  npc_elder: [
+    '....nnnn....',
+    '...nBBBbn...',
+    '..nBBBBBn...',
+    '..nBwBwBn...',
+    '..nBkBkBn...',
+    '..nBBBBBn...',
+    '..nbnoBbn...',
+    '...BBBBB....',
+    '....BBB.....',
+    '....bBb.....',
+    '...bb.bb....',
+    '............',
+  ],
+  npc_shop: [
+    '....nnnn....',
+    '...noooon...',
+    '..noooooon..',
+    '..nowowoon..',
+    '..nokokoon..',
+    '..noooooon..',
+    '...nooob....',
+    '..noooooon..',
+    '...noooon...',
+    '....non.....',
+    '...nn.nn....',
+    '............',
+  ],
+  npc_healer: [
+    '....wwww....',
+    '...nUUUUn...',
+    '..nUUUUUn...',
+    '..nUwUwUn...',
+    '..nUkUkUn...',
+    '..nUUUUUn...',
+    '..nbnoUbn...',
+    '...UUUUU....',
+    '....UUU.....',
+    '....nUn.....',
+    '...nn.nn....',
+    '............',
+  ],
+  slime: [
+    '....bbbb....',
+    '...bBBBBb...',
+    '..bBBBBBb...',
+    '..bBwBwBb...',
+    '..bBkBkBb...',
+    '..bBBBBBb...',
+    '..bbbbbbb...',
+    '...bBBBb....',
+    '............',
+    '............',
+    '............',
+    '............',
+  ],
+  bat: [
+    'bbb......bbb',
+    'bBb......bBb',
+    'bBbbbbbBBBb.',
+    '.bBBBBBBBBb.',
+    '..bBwBwBb...',
+    '..bBkBkBb...',
+    '..bBBBBBb...',
+    '...bBBBb....',
+    '............',
+    '............',
+    '............',
+    '............',
+  ],
+  golem: [
+    '...ssssss...',
+    '..ssssssss..',
+    '.ssswsswss..',
+    '.sssksskss..',
+    '.sssssssss..',
+    '..ssooss....',
+    '.sssssssss..',
+    '.sssssssss..',
+    '..ssssssss..',
+    '...ss..ss...',
+    '..sss..sss..',
+    '............',
+  ],
+  boss: [
+    '..kkkkkkkk..',
+    '.kUUUUUUk...',
+    'kUUUUUUUUk..',
+    'kUUkUkUUUk..',
+    'kUUwUwUUUk..',
+    'kUUkUkUUUk..',
+    'kUUUUUUUUk..',
+    '.kUUooUUk...',
+    'kUUUUUUUUk..',
+    'kUssUUssUk..',
+    '.kUUUUUUk...',
+    '..kkkkkk....',
+  ],
+};
+
+const COLOR_MAP = {
+  '.': null, 'k': C.black, 'r': C.red1, 'R': C.red3, 'g': C.grn2,
+  'w': C.white, 'b': C.blu1, 'B': C.blu3, 'G': C.grn3, 'n': C.brn3,
+  'o': C.org, 'y': C.yel, 's': C.gry, 'U': C.blu4, 'p': C.pnk,
+  'd': C.brn4, 'W': C.red4, 'm': C.mag, 'u': C.blu2,
+};
+
+const spriteCache = {};
+function getSprite(name) {
+  if (spriteCache[name]) return spriteCache[name];
+  const data = SP[name];
+  if (!data) return null;
+  const c = document.createElement('canvas');
+  c.width = data[0].length; c.height = data.length;
+  const cx = c.getContext('2d');
+  for (let y = 0; y < data.length; y++)
+    for (let x = 0; x < data[y].length; x++) {
+      const col = COLOR_MAP[data[y][x]];
+      if (col) { cx.fillStyle = col; cx.fillRect(x, y, 1, 1); }
+    }
+  spriteCache[name] = c;
+  return c;
+}
+
+// ==================== MAP DATA ====================
+// Tile legend: 0=grass,1=path,2=water,3=tree,4=wall,5=roof,6=door,7=floor,
+// 8=chest,9=sign,10=flower,11=bridge,12=mountain,13=snow,14=ice,15=lava
+const TILE_COLORS = {
+  0: C.grn2, 1: C.brn3, 2: C.blu2, 3: C.grn1, 4: C.brn4, 5: C.red2,
+  6: C.brn2, 7: C.brn3, 8: C.gol, 9: C.brn2, 10: C.grn2, 11: C.brn3,
+  12: C.gry, 13: C.snow, 14: C.blu4, 15: C.org,
+};
+const WALKABLE = new Set([0,1,6,7,8,9,10,11,13,14]);
+
+const MAPS = {
+  village: {
+    name: 'Spice Village',
+    width: 20, height: 15,
+    tiles: [
+      [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+      [3,0,0,0,0,1,1,1,0,0,0,0,0,10,0,0,0,0,0,3],
+      [3,0,5,5,0,1,0,1,0,5,5,5,0,0,0,10,0,0,0,3],
+      [3,0,4,4,0,1,0,1,0,4,4,4,0,0,0,0,0,10,0,3],
+      [3,0,4,6,0,1,0,1,0,4,6,4,0,0,0,0,0,0,0,3],
+      [3,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,3],
+      [3,0,10,0,0,1,0,1,0,0,10,0,0,9,0,0,10,0,0,3],
+      [3,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,3],
+      [3,0,5,5,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,3],
+      [3,0,4,4,0,1,0,1,1,1,1,1,1,1,1,1,1,0,0,3],
+      [3,0,4,6,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,3],
+      [3,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,3],
+      [3,0,10,0,0,1,0,0,10,0,0,10,0,0,10,0,1,0,3],
+      [3,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3],
+      [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    ],
+    npcs: [
+      { x:3, y:3, sprite:'npc_elder', name:'Elder', dialog:[
+        "Welcome, brave Chili Knight!",
+        "The Frost King has frozen our beloved Spice Kingdom...",
+        "Please venture through the Spicy Forest to the north.",
+        "Defeat the Frost King and restore flavor to our land!"
+      ]},
+      { x:9, y:3, sprite:'npc_shop', name:'Merchant', dialog:[
+        "Hey there, adventurer!",
+        "I'd sell you items but... everything's frozen solid.",
+        "You'll find Herbs in the forest. They restore 20 HP.",
+        "Good luck out there!"
+      ]},
+      { x:3, y:9, sprite:'npc_healer', name:'Healer', dialog:[
+        "You look tired, young one...",
+        "Let me restore your health.",
+        "* A warm glow surrounds you... *",
+      ]},
+    ],
+    exits: [
+      { x:17, y:14, to:'forest', tx:10, ty:1 },
+    ],
+    encounterRate: 0,
+  },
+  forest: {
+    name: 'Spicy Forest',
+    width: 20, height: 15,
+    tiles: [
+      [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+      [3,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,3,0,0,3],
+      [3,0,8,0,3,0,3,3,0,3,0,3,0,3,3,0,0,0,0,3],
+      [3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,0,3,0,0,3],
+      [3,3,3,0,3,0,0,0,0,3,3,3,0,0,0,0,3,0,3,3],
+      [3,0,0,0,3,0,0,3,0,0,0,0,0,3,0,0,0,0,0,3],
+      [3,0,3,0,0,0,0,3,3,3,0,3,0,3,3,0,3,3,0,3],
+      [3,0,3,0,3,0,0,0,0,0,0,3,0,0,0,0,0,3,0,3],
+      [3,0,0,0,3,3,3,0,3,3,0,3,3,3,0,3,0,0,0,3],
+      [3,3,0,0,0,0,0,0,0,3,0,0,0,0,0,3,0,3,0,3],
+      [3,0,0,3,3,0,3,3,0,0,0,3,3,0,0,0,0,3,0,3],
+      [3,0,0,0,0,0,0,3,0,3,0,0,3,0,3,3,0,0,0,3],
+      [3,0,3,0,3,3,0,0,0,3,0,0,0,0,0,3,0,3,3,3],
+      [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+      [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+    ],
+    npcs: [
+      { x:3, y:3, sprite:'npc_elder', name:'Mysterious Sage', dialog:[
+        "You've made it to the Spicy Forest...",
+        "Beware of the creatures lurking in the shadows.",
+        "The path north leads to Frost Castle.",
+        "May the spice be with you!"
+      ]},
+    ],
+    exits: [
+      { x:10, y:14, to:'village', tx:17, ty:13 },
+      { x:10, y:0, to:'castle', tx:10, ty:13 },
+    ],
+    encounterRate: 0.12,
+  },
+  castle: {
+    name: 'Frost Castle',
+    width: 20, height: 15,
+    tiles: [
+      [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+      [4,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,4],
+      [4,13,14,14,13,13,14,14,13,13,14,14,13,13,14,14,13,13,13,4],
+      [4,13,14,14,13,13,14,14,13,13,14,14,13,13,14,14,13,14,13,4],
+      [4,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,14,13,4],
+      [4,13,13,13,14,13,13,13,13,13,13,13,14,13,13,13,13,13,13,4],
+      [4,13,13,13,14,13,13,8,13,13,13,13,14,13,13,13,13,13,13,4],
+      [4,13,13,13,14,13,13,13,13,13,13,13,14,14,14,13,13,13,13,4],
+      [4,13,14,14,14,14,13,13,13,13,13,13,13,13,14,13,13,13,13,4],
+      [4,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,4],
+      [4,13,13,13,13,13,13,14,13,13,14,13,13,13,13,13,13,13,13,4],
+      [4,13,13,13,13,13,13,14,14,14,14,13,13,13,13,13,13,13,13,4],
+      [4,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,4],
+      [4,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,4],
+      [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+    ],
+    npcs: [],
+    exits: [
+      { x:10, y:14, to:'forest', tx:10, ty:1 },
+    ],
+    encounterRate: 0.15,
+  },
+};
+
+// ==================== GAME DATA ====================
+const MONSTERS = [
+  { name:'Ice Slime', sprite:'slime', hp:18, atk:5, def:2, exp:8, gold:4, drops:['Herb'] },
+  { name:'Frost Bat', sprite:'bat', hp:14, atk:8, def:1, exp:10, gold:6, drops:[] },
+  { name:'Snow Golem', sprite:'golem', hp:30, atk:10, def:6, exp:18, gold:10, drops:['Herb','Spice Powder'] },
+  { name:'Frost King', sprite:'boss', hp:100, atk:16, def:8, exp:80, gold:50, drops:[], boss:true },
+];
+
+const SPELLS = [
+  { name:'Fire Breath', cost:4, power:15, type:'attack', desc:'Scorching flames' },
+  { name:'Chili Storm', cost:8, power:28, type:'attack', desc:'Spicy devastation' },
+  { name:'Spice Heal', cost:3, heal:25, type:'heal', desc:'Warm recovery' },
+];
+
+const ITEMS = [
+  { name:'Herb', heal:20, desc:'Restores 20 HP' },
+  { name:'Spice Powder', atkBuff:5, desc:'+5 ATK for battle' },
+];
+
+const LEVEL_TABLE = [0, 0, 15, 40, 80, 130];
+const STAT_TABLE = [
+  null,
+  { hp:35, mp:10, atk:6, def:4 },
+  { hp:45, mp:14, atk:9, def:6 },
+  { hp:58, mp:18, atk:13, def:9 },
+  { hp:72, mp:24, atk:17, def:12 },
+  { hp:90, mp:30, atk:22, def:16 },
+];
+
+// ==================== GAME STATE ====================
+let state = {
+  scene: 'title', // title, overworld, battle, dialog, menu, gameover, victory
+  player: { x:5, y:6, dir:'down', level:1, hp:35, maxHp:35, mp:10, maxMp:10, atk:6, def:4, exp:0, gold:0, items:[{name:'Herb',qty:3}], spells:['Fire Breath','Spice Heal'] },
+  currentMap: 'village',
+  battle: null,
+  dialog: null,
+  menu: null,
+  titleSel: 0,
+  animTimer: 0,
+  battleAnim: null,
+  shakeTimer: 0,
+  flashTimer: 0,
+  particles: [],
+  stepAnim: 0,
+  transition: null,
+  chestOpened: new Set(),
+};
+
+function saveGame() {
+  const d = JSON.stringify({ player: state.player, currentMap: state.currentMap, chestOpened: [...state.chestOpened] });
+  localStorage.setItem('spicy_quest_save', d);
+}
+
+function loadGame() {
+  const d = localStorage.getItem('spicy_quest_save');
+  if (!d) return false;
+  try {
+    const s = JSON.parse(d);
+    state.player = s.player;
+    state.currentMap = s.currentMap;
+    state.chestOpened = new Set(s.chestOpened || []);
+    return true;
+  } catch { return false; }
+}
+
+function newGame() {
+  state.player = { x:5, y:6, dir:'down', level:1, hp:35, maxHp:35, mp:10, maxMp:10, atk:6, def:4, exp:0, gold:0, items:[{name:'Herb',qty:3}], spells:['Fire Breath','Spice Heal'] };
+  state.currentMap = 'village';
+  state.chestOpened = new Set();
+  state.scene = 'overworld';
+}
+
+// ==================== UI DRAWING ====================
+function drawText(text, x, y, color=C.white, size=1, align='left') {
+  ctx.fillStyle = color;
+  ctx.font = `${7*size}px monospace`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'top';
+  ctx.fillText(text, x, y);
+}
+
+function drawWindow(x, y, w, h, alpha=0.9) {
+  // Background
+  ctx.fillStyle = `rgba(15, 14, 23, ${alpha})`;
+  ctx.fillRect(x, y, w, h);
+  // Ornate border (Dragon Quest style)
+  ctx.strokeStyle = C.gol;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x+1, y+1, w-2, h-2);
+  ctx.strokeStyle = C.org;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x+3, y+3, w-6, h-6);
+  // Corner decorations
+  const cs = 4;
+  [[x,y],[x+w-cs,y],[x,y+h-cs],[x+w-cs,y+h-cs]].forEach(([cx,cy])=>{
+    ctx.fillStyle = C.gol;
+    ctx.fillRect(cx, cy, cs, cs);
+    ctx.fillStyle = C.yel;
+    ctx.fillRect(cx+1, cy+1, cs-2, cs-2);
+  });
+}
+
+function drawBar(x, y, w, h, cur, max, color) {
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x, y, w, h);
+  const pct = Math.max(0, cur / max);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, Math.floor(w * pct), h);
+  ctx.strokeStyle = C.gol;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+}
+
+// ==================== PARTICLES ====================
+function addParticle(x, y, color, count=8) {
+  for (let i = 0; i < count; i++) {
+    state.particles.push({
+      x, y, vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3 - 1,
+      life: 20 + Math.random()*15, maxLife: 35, color, size: 1+Math.random()*2,
+    });
+  }
+}
+
+function updateParticles() {
+  state.particles = state.particles.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life--;
+    return p.life > 0;
+  });
+}
+
+function drawParticles() {
+  state.particles.forEach(p => {
+    const a = p.life / p.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(p.size), Math.ceil(p.size));
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ==================== TITLE SCREEN ====================
+let titleStars = Array.from({length:50}, () => ({
+  x: Math.random()*W, y: Math.random()*H, s: Math.random()*2+0.5, b: Math.random()
+}));
+
+function updateTitle() {
+  state.animTimer++;
+  titleStars.forEach(st => { st.b = 0.3 + 0.7 * Math.abs(Math.sin(state.animTimer*0.02 + st.x)); });
+  if (upKey()) { state.titleSel = (state.titleSel + 2) % 3; SFX.select(); }
+  if (downKey()) { state.titleSel = (state.titleSel + 1) % 3; SFX.select(); }
+  if (actionKey()) {
+    SFX.confirm();
+    if (state.titleSel === 0) { newGame(); }
+    else if (state.titleSel === 1) { if (loadGame()) state.scene = 'overworld'; }
+  }
+}
+
+function drawTitle() {
+  // Background gradient
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, '#0f0e17'); grd.addColorStop(0.5, '#1a0a2e'); grd.addColorStop(1, '#2d0a0a');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  titleStars.forEach(st => {
+    ctx.globalAlpha = st.b;
+    ctx.fillStyle = C.yel;
+    ctx.fillRect(Math.floor(st.x), Math.floor(st.y), Math.ceil(st.s), Math.ceil(st.s));
+  });
+  ctx.globalAlpha = 1;
+
+  // Animated chili pepper
+  const bob = Math.sin(state.animTimer * 0.05) * 4;
+  const spr = getSprite('player_down');
+  if (spr) ctx.drawImage(spr, W/2 - 12, 50 + bob, 24, 24);
+
+  // Title
+  ctx.fillStyle = C.yel;
+  ctx.font = 'bold 24px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SPICY QUEST', W/2, 90);
+
+  // Subtitle with gradient effect
+  const subGlow = Math.abs(Math.sin(state.animTimer * 0.03));
+  ctx.fillStyle = `rgba(231, 76, 60, ${0.6 + subGlow * 0.4})`;
+  ctx.font = '10px monospace';
+  ctx.fillText('A Dragon Quest-Style RPG Adventure', W/2, 112);
+
+  // Menu
+  const opts = ['New Game', 'Continue', ''];
+  opts.forEach((opt, i) => {
+    if (!opt) return;
+    const y = 145 + i * 22;
+    if (i === state.titleSel) {
+      ctx.fillStyle = C.yel;
+      ctx.fillText('> ' + opt + ' <', W/2, y);
+    } else {
+      ctx.fillStyle = C.gry;
+      ctx.fillText(opt, W/2, y);
+    }
+  });
+
+  // Footer
+  ctx.fillStyle = C.gry;
+  ctx.font = '7px monospace';
+  ctx.fillText('Arrows/WASD: Move | Enter/Z: Confirm | Esc/X: Cancel', W/2, H - 15);
+  ctx.textAlign = 'left';
+}
+
+// ==================== OVERWORLD ====================
+let moveTimer = 0, moving = false, moveDir = null, moveProgress = 0;
+let fromX = 0, fromY = 0;
+
+function updateOverworld() {
+  state.animTimer++;
+  const p = state.player;
+  const map = MAPS[state.currentMap];
+
+  // NPC interaction
+  if (actionKey() && !moving && state.dialog === null) {
+    const dirs = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
+    const d = dirs[p.dir];
+    const nx = p.x + d[0], ny = p.y + d[1];
+    const npc = map.npcs.find(n => n.x === nx && n.y === ny);
+    if (npc) {
+      if (npc.name === 'Healer') {
+        p.hp = p.maxHp; p.mp = p.maxMp;
+      }
+      state.dialog = { npc, page: 0 };
+      SFX.confirm();
+      return;
+    }
+    // Check sign
+    const tile = map.tiles[ny]?.[nx];
+    if (tile === 9) {
+      const signs = {
+        village: "North: Spicy Forest\nBeware of monsters!",
+        forest: "South: Spice Village\nNorth: Frost Castle",
+        castle: "The Frost King awaits\nin the throne room...",
+      };
+      state.dialog = { npc: { name:'Sign', dialog:[signs[state.currentMap] || 'Nothing written.'] }, page: 0 };
+      SFX.confirm();
+      return;
+    }
+    // Check chest
+    if (tile === 8) {
+      const key = `${state.currentMap}_${nx}_${ny}`;
+      if (!state.chestOpened.has(key)) {
+        state.chestOpened.add(key);
+        const found = Math.random() < 0.5 ? 'Herb' : 'Spice Powder';
+        const existing = p.items.find(i => i.name === found);
+        if (existing) existing.qty++;
+        else p.items.push({ name: found, qty: 1 });
+        state.dialog = { npc: { name:'Treasure', dialog:[`Found ${found}!`] }, page: 0 };
+        SFX.confirm();
+        return;
+      }
+    }
+  }
+
+  // Dialog advance
+  if (state.dialog !== null) {
+    if (actionKey() || cancelKey()) {
+      const d = state.dialog;
+      if (d.page < d.npc.dialog.length - 1) { d.page++; SFX.text(); }
+      else { state.dialog = null; SFX.confirm(); }
+    }
+    return;
+  }
+
+  // Menu
+  if (cancelKey() && !moving) {
+    state.menu = { sel: 0 };
+    state.scene = 'menu';
+    SFX.confirm();
+    return;
+  }
+
+  // Movement
+  if (!moving) {
+    let dx = 0, dy = 0, dir = p.dir;
+    if (keys['ArrowUp'] || keys['w']) { dy = -1; dir = 'up'; }
+    else if (keys['ArrowDown'] || keys['s']) { dy = 1; dir = 'down'; }
+    else if (keys['ArrowLeft'] || keys['a']) { dx = -1; dir = 'left'; }
+    else if (keys['ArrowRight'] || keys['d']) { dx = 1; dir = 'right'; }
+
+    p.dir = dir;
+    if (dx || dy) {
+      const nx = p.x + dx, ny = p.y + dy;
+      if (nx >= 0 && nx < map.width && ny >= 0 && ny < map.height) {
+        const tile = map.tiles[ny][nx];
+        if (WALKABLE.has(tile)) {
+          // Check NPC collision
+          if (!map.npcs.some(n => n.x === nx && n.y === ny)) {
+            fromX = p.x; fromY = p.y;
+            p.x = nx; p.y = ny;
+            moving = true; moveProgress = 0; moveTimer = 0;
+            SFX.step();
+            state.stepAnim = (state.stepAnim + 1) % 4;
+
+            // Check chest - don't walk onto unopened chests
+            // Random encounter
+            if (map.encounterRate > 0 && Math.random() < map.encounterRate) {
+              state.battle = null; // will trigger after move finishes
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (moving) {
+    moveProgress += 0.15;
+    if (moveProgress >= 1) {
+      moving = false; moveProgress = 0;
+      // Check exits
+      const exit = map.exits.find(e => e.x === p.x && e.y === p.y);
+      if (exit) {
+        state.currentMap = exit.to;
+        p.x = exit.tx; p.y = exit.ty;
+        state.transition = { type:'fade', alpha:0, dir:1 };
+        SFX.confirm();
+        return;
+      }
+      // Trigger pending battle
+      if (state.battle === null && map.encounterRate > 0 && Math.random() < 0.3) {
+        startBattle();
+      }
+    }
+  }
+
+  updateParticles();
+
+  // Transition
+  if (state.transition) {
+    const t = state.transition;
+    t.alpha += t.dir * 0.05;
+    if (t.dir === 1 && t.alpha >= 1) { t.dir = -1; }
+    if (t.dir === -1 && t.alpha <= 0) { state.transition = null; }
+  }
+}
+
+function drawOverworld() {
+  const map = MAPS[state.currentMap];
+  const p = state.player;
+
+  // Calculate camera offset
+  const camX = Math.max(0, Math.min(p.x * TILE - W/2 + TILE/2, map.width * TILE - W));
+  const camY = Math.max(0, Math.min(p.y * TILE - H/2 + TILE/2, map.height * TILE - H));
+
+  // Draw tiles
+  const startCol = Math.floor(camX / TILE);
+  const startRow = Math.floor(camY / TILE);
+  const endCol = Math.min(startCol + COLS + 1, map.width);
+  const endRow = Math.min(startRow + ROWS + 1, map.height);
+
+  for (let r = startRow; r < endRow; r++) {
+    for (let c = startCol; c < endCol; c++) {
+      const tile = map.tiles[r]?.[c];
+      if (tile === undefined) continue;
+      const sx = c * TILE - camX;
+      const sy = r * TILE - camY;
+
+      // Base tile
+      ctx.fillStyle = TILE_COLORS[tile] || C.grn2;
+      ctx.fillRect(sx, sy, TILE, TILE);
+
+      // Tile details
+      if (tile === 3) { // Tree
+        ctx.fillStyle = C.dkgrn;
+        ctx.fillRect(sx+2, sy+2, 12, 12);
+        ctx.fillStyle = C.grn1;
+        ctx.fillRect(sx+4, sy+1, 8, 8);
+        ctx.fillStyle = C.brn1;
+        ctx.fillRect(sx+6, sy+10, 4, 6);
+      } else if (tile === 2) { // Water
+        const wave = Math.sin(state.animTimer * 0.05 + c * 0.5 + r * 0.3);
+        ctx.fillStyle = wave > 0 ? C.blu3 : C.blu2;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = C.blu4;
+        ctx.fillRect(sx + 4 + Math.floor(wave*2), sy + 4, 4, 2);
+      } else if (tile === 8) { // Chest
+        const key = `${state.currentMap}_${c}_${r}`;
+        if (state.chestOpened.has(key)) {
+          ctx.fillStyle = C.brn2;
+          ctx.fillRect(sx+2, sy+6, 12, 8);
+        } else {
+          ctx.fillStyle = C.gol;
+          ctx.fillRect(sx+2, sy+4, 12, 10);
+          ctx.fillStyle = C.yel;
+          ctx.fillRect(sx+5, sy+7, 6, 4);
+          ctx.fillStyle = C.org;
+          ctx.fillRect(sx+7, sy+8, 2, 2);
+        }
+      } else if (tile === 9) { // Sign
+        ctx.fillStyle = C.brn2;
+        ctx.fillRect(sx+4, sy+8, 8, 2);
+        ctx.fillRect(sx+7, sy+10, 2, 6);
+        ctx.fillStyle = C.brn3;
+        ctx.fillRect(sx+3, sy+3, 10, 6);
+        ctx.fillStyle = C.white;
+        ctx.fillRect(sx+5, sy+5, 2, 1);
+        ctx.fillRect(sx+8, sy+5, 2, 1);
+      } else if (tile === 10) { // Flower
+        const colors = [C.red3, C.yel, C.pnk, C.blu3];
+        ctx.fillStyle = colors[(c*7+r*13) % colors.length];
+        ctx.fillRect(sx+6, sy+4, 4, 4);
+        ctx.fillStyle = C.grn2;
+        ctx.fillRect(sx+7, sy+8, 2, 5);
+      } else if (tile === 14) { // Ice
+        const shimmer = Math.sin(state.animTimer * 0.03 + c + r) * 0.1;
+        ctx.fillStyle = shimmer > 0 ? '#e8f4fd' : C.blu4;
+        ctx.fillRect(sx, sy, TILE, TILE);
+      } else if (tile === 13) { // Snow
+        ctx.fillStyle = C.snow;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(sx+2, sy+2, 3, 2);
+        ctx.fillRect(sx+9, sy+8, 4, 2);
+      } else if (tile === 6) { // Door
+        ctx.fillStyle = C.brn2;
+        ctx.fillRect(sx+3, sy, 10, TILE);
+        ctx.fillStyle = C.yel;
+        ctx.fillRect(sx+10, sy+8, 2, 2);
+      } else if (tile === 5) { // Roof
+        ctx.fillStyle = C.red2;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = C.red1;
+        ctx.fillRect(sx, sy+TILE-2, TILE, 2);
+      }
+    }
+  }
+
+  // Draw NPCs
+  map.npcs.forEach(npc => {
+    const sx = npc.x * TILE - camX;
+    const sy = npc.y * TILE - camY;
+    const spr = getSprite(npc.sprite);
+    if (spr) {
+      const bob = Math.sin(state.animTimer * 0.04 + npc.x) * 1;
+      ctx.drawImage(spr, sx + 2, sy + bob, 12, 12);
+    }
+  });
+
+  // Draw player
+  {
+    let px = p.x * TILE - camX;
+    let py = p.y * TILE - camY;
+    if (moving) {
+      px = fromX * TILE - camX + (p.x - fromX) * TILE * moveProgress;
+      py = fromY * TILE - camY + (p.y - fromY) * TILE * moveProgress;
+    }
+    const spr = getSprite('player_' + p.dir);
+    if (spr) {
+      const bob = moving ? Math.sin(moveProgress * Math.PI * 2) * 2 : 0;
+      ctx.drawImage(spr, px + 2, py + bob, 12, 12);
+    }
+  }
+
+  drawParticles();
+
+  // HUD
+  drawWindow(2, 2, 100, 24, 0.7);
+  drawText(`${state.player.name || 'Chili'} LV${p.level}`, 8, 5, C.yel, 1);
+  drawBar(8, 15, 60, 5, p.hp, p.maxHp, p.hp > p.maxHp*0.3 ? C.grn2 : C.red3);
+  drawText(`HP ${p.hp}/${p.maxHp}`, 72, 13, C.white, 0.8);
+
+  // Location name
+  drawText(map.name, W - 6, 5, C.gry, 0.9, 'right');
+
+  // Dialog overlay
+  if (state.dialog !== null) {
+    const d = state.dialog;
+    drawWindow(8, H - 60, W - 16, 52);
+    drawText(d.npc.name, 16, H - 56, C.yel);
+    const lines = d.npc.dialog[d.page].split('\n');
+    lines.forEach((line, i) => {
+      drawText(line, 16, H - 44 + i * 10, C.white, 1);
+    });
+    if (d.page < d.npc.dialog.length - 1) {
+      drawText('▼', W - 24, H - 16, C.gry, 1);
+    }
+  }
+
+  // Transition
+  if (state.transition) {
+    ctx.fillStyle = `rgba(15, 14, 23, ${state.transition.alpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ==================== BATTLE SYSTEM ====================
+function startBattle() {
+  const map = MAPS[state.currentMap];
+  let monster;
+  if (state.currentMap === 'castle' && state.player.x >= 8 && state.player.x <= 11 && state.player.y <= 4) {
+    monster = { ...MONSTERS[3] }; // Boss
+  } else {
+    const pool = state.currentMap === 'castle' ? [0,1,2] : [0,1];
+    const idx = pool[Math.floor(Math.random() * pool.length)];
+    monster = { ...MONSTERS[idx] };
+  }
+  monster.maxHp = monster.hp;
+  monster.atkBuff = 0;
+  state.battle = {
+    monster,
+    cmd: 0, // 0=fight,1=magic,2=item,3=run
+    phase: 'command', // command, spell_select, item_select, player_act, enemy_act, result
+    msg: [`A wild ${monster.name} appeared!`],
+    msgTimer: 40,
+    spellSel: 0,
+    itemSel: 0,
+    resultTimer: 0,
+    anim: null,
+    turnOrder: 'player',
+  };
+  state.scene = 'battle';
+  SFX.encounter();
+}
+
+function updateBattle() {
+  const b = state.battle;
+  if (!b) return;
+  state.animTimer++;
+
+  // Update animation
+  if (b.anim) {
+    b.anim.timer--;
+    if (b.anim.timer <= 0) {
+      const next = b.anim.next;
+      b.anim = null;
+      if (next) next();
+    }
+    updateParticles();
+    return;
+  }
+
+  // Message display timer
+  if (b.msgTimer > 0) {
+    b.msgTimer--;
+    if (actionKey() && b.msgTimer < 30) b.msgTimer = 0;
+    if (b.msgTimer === 0 && b.phase === 'result') {
+      finishBattle();
+    }
+    return;
+  }
+
+  const p = state.player;
+
+  // Command selection
+  if (b.phase === 'command') {
+    const cmds = ['Fight', 'Magic', 'Item', 'Run'];
+    if (upKey()) { b.cmd = (b.cmd + 3) % 4; SFX.select(); }
+    if (downKey()) { b.cmd = (b.cmd + 1) % 4; SFX.select(); }
+    if (leftKey()) { b.cmd = b.cmd >= 2 ? b.cmd - 2 : b.cmd; SFX.select(); }
+    if (rightKey()) { b.cmd = b.cmd < 2 ? b.cmd + 2 : b.cmd; SFX.select(); }
+    if (actionKey()) {
+      SFX.confirm();
+      switch(b.cmd) {
+        case 0: playerAttack(); break;
+        case 1:
+          if (p.spells.length === 0) { b.msg = ['No spells!']; b.msgTimer = 30; }
+          else { b.phase = 'spell_select'; b.spellSel = 0; }
+          break;
+        case 2:
+          if (p.items.filter(i=>i.qty>0).length === 0) { b.msg = ['No items!']; b.msgTimer = 30; }
+          else { b.phase = 'item_select'; b.itemSel = 0; }
+          break;
+        case 3: playerRun(); break;
+      }
+    }
+  }
+
+  // Spell selection
+  if (b.phase === 'spell_select') {
+    if (upKey()) { b.spellSel = Math.max(0, b.spellSel-1); SFX.select(); }
+    if (downKey()) { b.spellSel = Math.min(p.spells.length-1, b.spellSel+1); SFX.select(); }
+    if (cancelKey()) { b.phase = 'command'; SFX.cancel(); }
+    if (actionKey()) {
+      const spell = SPELLS.find(s => s.name === p.spells[b.spellSel]);
+      if (!spell) return;
+      if (p.mp < spell.cost) { b.msg = ['Not enough MP!']; b.msgTimer = 30; SFX.cancel(); return; }
+      SFX.confirm();
+      p.mp -= spell.cost;
+      if (spell.type === 'attack') {
+        const dmg = Math.max(1, spell.power + Math.floor(Math.random()*6) - b.monster.def/2);
+        b.monster.hp -= dmg;
+        b.msg = [`${spell.name}! ${dmg} damage!`];
+        SFX.magic();
+        addParticle(W/2, 50, C.red3, 12);
+        addParticle(W/2, 50, C.org, 8);
+        state.shakeTimer = 10;
+        b.anim = { timer: 25, next: () => enemyTurn(b) };
+      } else {
+        const heal = spell.heal + Math.floor(Math.random()*6);
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        b.msg = [`${spell.name}! HP restored by ${heal}!`];
+        SFX.heal();
+        addParticle(50, H - 60, C.grn2, 8);
+        b.anim = { timer: 25, next: () => enemyTurn(b) };
+      }
+      b.phase = 'player_act';
+      b.msgTimer = 35;
+    }
+  }
+
+  // Item selection
+  if (b.phase === 'item_select') {
+    const available = p.items.filter(i => i.qty > 0);
+    if (upKey()) { b.itemSel = Math.max(0, b.itemSel-1); SFX.select(); }
+    if (downKey()) { b.itemSel = Math.min(available.length-1, b.itemSel+1); SFX.select(); }
+    if (cancelKey()) { b.phase = 'command'; SFX.cancel(); }
+    if (actionKey()) {
+      const item = available[b.itemSel];
+      if (!item) return;
+      item.qty--;
+      if (item.qty <= 0) p.items = p.items.filter(i => i.qty > 0);
+      const itemData = ITEMS.find(i => i.name === item.name);
+      SFX.confirm();
+      if (itemData && itemData.heal) {
+        p.hp = Math.min(p.maxHp, p.hp + itemData.heal);
+        b.msg = [`Used ${item.name}! HP +${itemData.heal}!`];
+        SFX.heal();
+        addParticle(50, H - 60, C.grn2, 6);
+      } else if (itemData && itemData.atkBuff) {
+        p.atk += itemData.atkBuff;
+        b.msg = [`Used ${item.name}! ATK +${itemData.atkBuff}!`];
+        addParticle(50, H - 60, C.red3, 6);
+      }
+      b.phase = 'player_act';
+      b.msgTimer = 35;
+      b.anim = { timer: 25, next: () => { p.atk = STAT_TABLE[p.level].atk; enemyTurn(b); } };
+    }
+  }
+
+  updateParticles();
+}
+
+function playerAttack() {
+  const b = state.battle, p = state.player;
+  const dmg = Math.max(1, p.atk - b.monster.def/2 + Math.floor(Math.random()*4));
+  b.monster.hp -= dmg;
+  b.msg = [`Chili attacks! ${dmg} damage!`];
+  b.phase = 'player_act';
+  b.msgTimer = 35;
+  SFX.hit();
+  state.shakeTimer = 8;
+  state.flashTimer = 4;
+  addParticle(W/2, 50, C.yel, 6);
+  b.anim = { timer: 20, next: () => enemyTurn(b) };
+}
+
+function playerRun() {
+  const b = state.battle;
+  if (b.monster.boss) {
+    b.msg = ["Can't run from the boss!"];
+    b.msgTimer = 30;
+    SFX.cancel();
+    return;
+  }
+  if (Math.random() < 0.6) {
+    b.msg = ['Got away safely!'];
+    b.msgTimer = 30;
+    b.phase = 'result';
+    SFX.confirm();
+  } else {
+    b.msg = ["Couldn't escape!"];
+    b.msgTimer = 30;
+    b.phase = 'player_act';
+    b.anim = { timer: 15, next: () => enemyTurn(b) };
+    SFX.cancel();
+  }
+}
+
+function enemyTurn(b) {
+  const m = b.monster;
+  if (m.hp <= 0) {
+    b.msg = [`${m.name} defeated!`, `+${m.exp} EXP  +${m.gold} Gold`];
+    b.phase = 'result';
+    b.msgTimer = 50;
+    state.player.exp += m.exp;
+    state.player.gold += m.gold;
+    SFX.victory();
+    // Drop items
+    m.drops.forEach(d => {
+      if (Math.random() < 0.4) {
+        const existing = state.player.items.find(i => i.name === d);
+        if (existing) existing.qty++;
+        else state.player.items.push({ name: d, qty: 1 });
+        b.msg.push(`Found ${d}!`);
+      }
+    });
+    // Level up check
+    checkLevelUp();
+    return;
+  }
+  const p = state.player;
+  const atk = m.atk + m.atkBuff;
+  const dmg = Math.max(1, atk - p.def/2 + Math.floor(Math.random()*4));
+  p.hp -= dmg;
+  b.msg = [`${m.name} attacks! ${dmg} damage!`];
+  b.phase = 'enemy_act';
+  b.msgTimer = 35;
+  SFX.hit();
+  state.shakeTimer = 6;
+  addParticle(50, H - 70, C.red3, 4);
+
+  b.anim = { timer: 20, next: () => {
+    if (p.hp <= 0) {
+      p.hp = 0;
+      b.msg = ['Chili was defeated...'];
+      b.phase = 'gameover';
+      b.msgTimer = 60;
+      SFX.death();
+    } else {
+      b.phase = 'command';
+      b.cmd = 0;
+    }
+  }};
+}
+
+function checkLevelUp() {
+  const p = state.player;
+  if (p.level >= 5) return;
+  const needed = LEVEL_TABLE[p.level + 1];
+  if (p.exp >= needed) {
+    p.level++;
+    const stats = STAT_TABLE[p.level];
+    p.maxHp = stats.hp; p.maxMp = stats.mp; p.atk = stats.atk; p.def = stats.def;
+    p.hp = p.maxHp; p.mp = p.maxMp;
+    if (p.level === 2 && !p.spells.includes('Chili Storm')) p.spells.push('Chili Storm');
+    SFX.levelup();
+    state.battle.msg.push(`LEVEL UP! Now LV${p.level}!`);
+  }
+}
+
+function finishBattle() {
+  const b = state.battle;
+  if (b.monster.boss) {
+    state.scene = 'victory';
+    state.animTimer = 0;
+  } else if (state.player.hp <= 0) {
+    state.scene = 'gameover';
+    state.animTimer = 0;
+  } else {
+    state.scene = 'overworld';
+    state.battle = null;
+    saveGame();
+  }
+}
+
+function drawBattle() {
+  const b = state.battle;
+  if (!b) return;
+
+  // Background
+  const isBoss = b.monster.boss;
+  const bgGrd = ctx.createLinearGradient(0, 0, 0, H);
+  if (isBoss) {
+    bgGrd.addColorStop(0, '#1a0a2e'); bgGrd.addColorStop(0.5, '#2d0a1a'); bgGrd.addColorStop(1, '#0f0e17');
+  } else {
+    bgGrd.addColorStop(0, '#0a1a2e'); bgGrd.addColorStop(0.5, '#0f0e17'); bgGrd.addColorStop(1, '#1a0a0a');
+  }
+  ctx.fillStyle = bgGrd; ctx.fillRect(0, 0, W, H);
+
+  // Shake effect
+  let sx = 0, sy = 0;
+  if (state.shakeTimer > 0) {
+    sx = (Math.random()-0.5) * state.shakeTimer;
+    sy = (Math.random()-0.5) * state.shakeTimer;
+    state.shakeTimer--;
+  }
+
+  // Flash effect
+  if (state.flashTimer > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${state.flashTimer * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+    state.flashTimer--;
+  }
+
+  // Enemy sprite (large)
+  const spr = getSprite(b.monster.sprite);
+  if (spr) {
+    const scale = isBoss ? 5 : 4;
+    const ew = spr.width * scale, eh = spr.height * scale;
+    const ex = W/2 - ew/2 + sx;
+    const ey = 20 - eh/4 + sy;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(W/2, ey + eh + 5, ew/2.5, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Sprite
+    ctx.drawImage(spr, ex, ey, ew, eh);
+    // Boss aura
+    if (isBoss) {
+      const aura = Math.sin(state.animTimer * 0.08) * 0.15;
+      ctx.fillStyle = `rgba(100, 150, 255, ${0.1 + aura})`;
+      ctx.beginPath();
+      ctx.ellipse(W/2, ey + eh/2, ew/1.8, eh/1.5, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // Damage flash
+    if (b.phase === 'player_act' && b.anim) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.5})`;
+      ctx.fillRect(ex, ey, ew, eh);
+    }
+  }
+
+  // Enemy name + HP bar
+  drawText(b.monster.name, W/2, 2, C.white, 1, 'center');
+  drawBar(W/2 - 40, 12, 80, 5, b.monster.hp, b.monster.maxHp, C.red3);
+  drawText(`${Math.max(0,b.monster.hp)}/${b.monster.maxHp}`, W/2, 19, C.white, 0.7, 'center');
+
+  drawParticles();
+
+  // Player side indicator
+  ctx.fillStyle = C.red3;
+  ctx.fillRect(10, H - 85, 8, 20);
+  ctx.fillStyle = C.grn2;
+  ctx.fillRect(11, H - 84, 3, 4);
+  ctx.fillStyle = C.white;
+  ctx.fillRect(12, H - 80, 2, 1);
+  ctx.fillRect(15, H - 80, 2, 1);
+
+  // Command window
+  if (b.phase === 'command' || b.phase === 'spell_select' || b.phase === 'item_select') {
+    drawWindow(W/2 - 70, H - 95, 140, 90);
+
+    if (b.phase === 'command') {
+      const cmds = ['Fight', 'Magic', 'Item', 'Run'];
+      cmds.forEach((cmd, i) => {
+        const cx = W/2 - 50 + (i % 2) * 70;
+        const cy = H - 88 + Math.floor(i / 2) * 22;
+        if (i === b.cmd) {
+          drawText('> ' + cmd, cx, cy, C.yel);
+        } else {
+          drawText('  ' + cmd, cx, cy, C.gry);
+        }
+      });
+    } else if (b.phase === 'spell_select') {
+      state.player.spells.forEach((name, i) => {
+        const sp = SPELLS.find(s => s.name === name);
+        const cy = H - 88 + i * 14;
+        drawText((i === b.spellSel ? '> ' : '  ') + `${name} (${sp?.cost||0}MP)`, W/2 - 60, cy, i === b.spellSel ? C.yel : C.white, 0.9);
+      });
+    } else if (b.phase === 'item_select') {
+      const available = state.player.items.filter(i => i.qty > 0);
+      available.forEach((item, i) => {
+        const cy = H - 88 + i * 14;
+        drawText((i === b.itemSel ? '> ' : '  ') + `${item.name} x${item.qty}`, W/2 - 60, cy, i === b.itemSel ? C.yel : C.white, 0.9);
+      });
+    }
+  }
+
+  // Player status bar
+  drawWindow(2, H - 30, 130, 28, 0.8);
+  const p = state.player;
+  drawText(`Chili LV${p.level}`, 8, H - 27, C.yel, 0.9);
+  drawBar(8, H - 17, 50, 5, p.hp, p.maxHp, p.hp > p.maxHp*0.3 ? C.grn2 : C.red3);
+  drawText(`HP${p.hp}`, 62, H - 19, C.white, 0.7);
+  drawBar(8, H - 9, 50, 5, p.mp, p.maxMp, C.blu2);
+  drawText(`MP${p.mp}`, 62, H - 11, C.white, 0.7);
+
+  // Message
+  if (b.msg.length > 0 && b.msgTimer > 0) {
+    drawWindow(60, H - 30, W - 65, 28, 0.85);
+    b.msg.forEach((line, i) => {
+      drawText(line, 68, H - 27 + i * 10, C.white, 0.9);
+    });
+  }
+}
+
+// ==================== MENU ====================
+function updateMenu() {
+  const m = state.menu;
+  if (upKey()) { m.sel = Math.max(0, m.sel - 1); SFX.select(); }
+  if (downKey()) { m.sel = Math.min(3, m.sel + 1); SFX.select(); }
+  if (cancelKey() || actionKey()) {
+    if (cancelKey() || m.sel === 3) { state.scene = 'overworld'; state.menu = null; SFX.confirm(); return; }
+    if (m.sel === 2) { saveGame(); state.menu = null; state.scene = 'overworld'; SFX.confirm(); return; }
+  }
+}
+
+function drawMenu() {
+  // Dim overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawWindow(W/2 - 80, 30, 160, 160);
+  const p = state.player;
+
+  drawText('Chili Knight', W/2, 38, C.yel, 1.2, 'center');
+  drawText(`Level: ${p.level}`, W/2 - 65, 58, C.white);
+  drawText(`EXP: ${p.exp}/${LEVEL_TABLE[p.level+1] || 'MAX'}`, W/2 - 65, 70, C.white);
+  drawText(`Gold: ${p.gold}`, W/2 - 65, 82, C.gol);
+  drawText(`HP: ${p.hp}/${p.maxHp}`, W/2 - 65, 96, C.grn2);
+  drawText(`MP: ${p.mp}/${p.maxMp}`, W/2 - 65, 108, C.blu3);
+  drawText(`ATK: ${p.atk}  DEF: ${p.def}`, W/2 - 65, 120, C.white);
+
+  // Items
+  drawText('Items:', W/2 - 65, 136, C.gry);
+  p.items.filter(i=>i.qty>0).slice(0,2).forEach((item, i) => {
+    drawText(` ${item.name} x${item.qty}`, W/2 - 55, 146 + i * 10, C.white, 0.9);
+  });
+
+  // Options
+  const opts = ['Status', 'Items', 'Save', 'Close'];
+  drawWindow(W/2 - 50, H - 50, 100, 44);
+  opts.forEach((opt, i) => {
+    drawText((i === state.menu.sel ? '> ' : '  ') + opt, W/2 - 40, H - 45 + i * 10, i === state.menu.sel ? C.yel : C.gry, 0.9);
+  });
+}
+
+// ==================== GAME OVER ====================
+function updateGameOver() {
+  state.animTimer++;
+  if (state.animTimer > 120 && actionKey()) {
+    state.scene = 'title';
+    state.titleSel = 0;
+    SFX.confirm();
+  }
+}
+
+function drawGameOver() {
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Fading red vignette
+  const vig = ctx.createRadialGradient(W/2, H/2, 20, W/2, H/2, W);
+  vig.addColorStop(0, 'rgba(139,26,26,0.3)');
+  vig.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  drawText('GAME OVER', W/2, H/2 - 30, C.red3, 2, 'center');
+  drawText('The Spice Kingdom remains frozen...', W/2, H/2 + 10, C.gry, 0.9, 'center');
+
+  if (state.animTimer > 120) {
+    const blink = Math.sin(state.animTimer * 0.1) > 0;
+    if (blink) drawText('Press Enter to continue', W/2, H/2 + 40, C.gry, 0.9, 'center');
+  }
+}
+
+// ==================== VICTORY ====================
+let victoryStars = Array.from({length:30}, () => ({
+  x: Math.random()*W, y: Math.random()*H, s: Math.random()*3+1, c: [C.yel,C.gol,C.org,C.red3][Math.floor(Math.random()*4)]
+}));
+
+function updateVictory() {
+  state.animTimer++;
+  victoryStars.forEach(st => {
+    st.y -= 0.5;
+    if (st.y < -5) { st.y = H + 5; st.x = Math.random() * W; }
+  });
+  if (state.animTimer > 180 && actionKey()) {
+    state.scene = 'title';
+    state.titleSel = 0;
+    SFX.confirm();
+  }
+}
+
+function drawVictory() {
+  // Gradient background
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, '#2d0a0a');
+  grd.addColorStop(0.5, '#1a0a2e');
+  grd.addColorStop(1, '#0a2e0a');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+
+  // Rising stars/particles
+  victoryStars.forEach(st => {
+    ctx.fillStyle = st.c;
+    ctx.fillRect(Math.floor(st.x), Math.floor(st.y), Math.ceil(st.s), Math.ceil(st.s));
+  });
+
+  // Hero sprite
+  const spr = getSprite('player_down');
+  if (spr) {
+    const bob = Math.sin(state.animTimer * 0.06) * 3;
+    ctx.drawImage(spr, W/2 - 20, 50 + bob, 40, 40);
+  }
+
+  // Victory text
+  const pulse = 1 + Math.sin(state.animTimer * 0.05) * 0.1;
+  drawText('VICTORY!', W/2, 100, C.yel, 2 * pulse, 'center');
+  drawText('The Frost King has been defeated!', W/2, 135, C.white, 0.9, 'center');
+  drawText('The Spice Kingdom is saved!', W/2, 150, C.grn3, 0.9, 'center');
+  drawText('Flavor has been restored to the land!', W/2, 165, C.org, 0.9, 'center');
+
+  if (state.animTimer > 180) {
+    const blink = Math.sin(state.animTimer * 0.1) > 0;
+    if (blink) drawText('Press Enter to continue', W/2, H - 30, C.gry, 0.9, 'center');
+  }
+}
+
+// ==================== MAIN LOOP ====================
+const FPS = 60;
+const FRAME = 1000 / FPS;
+let lastTime = 0, accum = 0;
+
+function update() {
+  switch (state.scene) {
+    case 'title': updateTitle(); break;
+    case 'overworld': updateOverworld(); break;
+    case 'battle': updateBattle(); break;
+    case 'menu': updateMenu(); break;
+    case 'gameover': updateGameOver(); break;
+    case 'victory': updateVictory(); break;
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  switch (state.scene) {
+    case 'title': drawTitle(); break;
+    case 'overworld': drawOverworld(); break;
+    case 'battle': drawBattle(); break;
+    case 'menu': drawMenu(); break;
+    case 'gameover': drawGameOver(); break;
+    case 'victory': drawVictory(); break;
+  }
+}
+
+function loop(ts) {
+  const dt = ts - lastTime;
+  lastTime = ts;
+  accum += dt;
+  while (accum >= FRAME) {
+    update();
+    accum -= FRAME;
+  }
+  render();
+  clearInput();
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
